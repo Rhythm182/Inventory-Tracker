@@ -18,18 +18,17 @@ import {
   deleteDoc,
   setDoc,
   query,
-} from "firebase/firestore"; // Ensure all required imports
+} from "firebase/firestore";
 
 export default function Home() {
-  // Correct state initialization
   const [inventory, setInventory] = useState([]);
+  const [filteredInventory, setFilteredInventory] = useState([]); //updated inventory for search
+  const [searchQuery, setSearchQuery] = useState(""); //storing the search text
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState("");
 
-  //update from firebase
   const updateInventory = async () => {
-    //not freexing screen while fetching data
-    const snapshot = query(collection(firestore, "inventory")); //fetching inventory collection
+    const snapshot = query(collection(firestore, "inventory"));
     const docs = await getDocs(snapshot);
     const inventoryList = [];
     docs.forEach((doc) => {
@@ -39,9 +38,9 @@ export default function Home() {
       });
     });
     setInventory(inventoryList);
+    setFilteredInventory(inventoryList);
   };
 
-  //remove items function
   const removeItem = async (item) => {
     const docRef = doc(collection(firestore, "inventory"), item);
     const docSnap = await getDoc(docRef);
@@ -51,7 +50,6 @@ export default function Home() {
       if (quantity === 1) {
         await deleteDoc(docRef);
       } else {
-        //might wanna add an error message here too.
         await setDoc(docRef, { quantity: quantity - 1 });
       }
     }
@@ -71,10 +69,17 @@ export default function Home() {
     await updateInventory();
   };
 
-  //runs once when page loads
   useEffect(() => {
     updateInventory();
   }, []);
+
+  //updated filteredInventory accordingly
+  useEffect(() => {
+    const filtered = inventory.filter((item) =>
+      item.id.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredInventory(filtered);
+  }, [searchQuery, inventory]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -85,15 +90,12 @@ export default function Home() {
       height="100vh"
       display="flex"
       flexDirection="column"
-      justifyContent="center"
       alignItems="center"
       gap={2}
+      p={2}
     >
       <Modal open={open} onClose={handleClose}>
         <Box
-          position="absolute"
-          top="50%"
-          left="50%"
           width={400}
           bgcolor="white"
           border="2px solid #000"
@@ -102,11 +104,11 @@ export default function Home() {
           display="flex"
           flexDirection="column"
           gap={3}
-          sx={{
-            transform: "translate(-50%, -50%)",
-          }}
+          mx="auto"
+          my="auto"
+          mt="20vh" // Adjust top margin to center the modal vertically
         >
-          <Typography variant="h6"> Add Item</Typography>
+          <Typography variant="h6">Add Item</Typography>
           <Stack width="100%" direction="row" spacing={2}>
             <TextField
               variant="outlined"
@@ -129,14 +131,35 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
-      <Button
-        variant="contained"
-        onClick={() => {
-          handleOpen();
-        }}
+
+      <Box
+        display="flex"
+        width="800px"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
       >
-        Add New Item
-      </Button>
+        <Box flexGrow={1} mr={2}>
+          <TextField
+            variant="outlined"
+            label="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              style: { height: "56px" }, //adjust height if needed.
+            }}
+          />
+        </Box>
+        <Button
+          variant="contained"
+          onClick={() => {
+            handleOpen();
+          }}
+        >
+          Add New Item
+        </Button>
+      </Box>
+
       <Box border="1px solid #333">
         <Box
           width="800px"
@@ -150,35 +173,45 @@ export default function Home() {
             Inventory Items
           </Typography>
         </Box>
-      <Stack width="800px" height="300px" spacing={2} overflow="auto">
-        {inventory.map(({ id, quantity }) => (
-          <Box
-            key={id}
-            width="100%"
-            minHeight="150px"
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            bgColor="#f0f0f0"
-            padding={5}
-          >
-            <Typography variant="h3" color="#333" textAlign="center">
-              {id.charAt(0).toUpperCase() + id.slice(1)}
-            </Typography>
-            <Typography variant="h3" color="#333" textAlign="center">
-              {quantity}
-            </Typography>
-            <Stack direction = "row" spacing = {2}>
-            <Button variant = "contained" onClick = {()=>{
-              addItem(id)
-            }}>Add</Button>
-            <Button variant = "contained" onClick = {()=>{
-              removeItem(id)
-            }}>Remove</Button>
-            </Stack>
-          </Box>
-        ))}
-      </Stack>
+        <Stack width="800px" height="300px" spacing={2} overflow="auto">
+          {filteredInventory.map(({ id, quantity }) => (
+            <Box
+              key={id}
+              width="100%"
+              minHeight="150px"
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              bgColor="#f0f0f0"
+              padding={5}
+            >
+              <Typography variant="h3" color="#333" textAlign="center">
+                {id.charAt(0).toUpperCase() + id.slice(1)}
+              </Typography>
+              <Typography variant="h3" color="#333" textAlign="center">
+                {quantity}
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    addItem(id);
+                  }}
+                >
+                  Add
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    removeItem(id);
+                  }}
+                >
+                  Remove
+                </Button>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
       </Box>
     </Box>
   );
